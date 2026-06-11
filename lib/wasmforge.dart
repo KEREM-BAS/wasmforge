@@ -7,6 +7,24 @@
 /// reports `false` where a feature is unavailable.
 library;
 
+export 'src/concurrency/message_protocol.dart'
+    show
+        Envelope,
+        EnvelopeKind,
+        TaskHandler,
+        TaskRegistry,
+        UnknownTaskException,
+        WorkerPoolDisposedException,
+        WorkerQueueFullException,
+        WorkerSpawnException,
+        WorkerTaskException,
+        WorkerTransport,
+        WorkerTransportFactory,
+        assertEncodablePayload,
+        collectTransferableBuffers,
+        maxSafePayloadInteger,
+        protocolVersion;
+export 'src/concurrency/shared_buffer.dart' show SharedBuffer;
 export 'src/core/capabilities.dart'
     show
         CapabilityMatrix,

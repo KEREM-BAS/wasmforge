@@ -15,6 +15,8 @@ library;
 import 'dart:js_interop';
 import 'dart:typed_data';
 
+import '../concurrency/shared_buffer.dart';
+import '../concurrency/shared_buffer_web.dart';
 import 'js_bindings.dart';
 
 /// Largest integer magnitude that survives a JS `number` round trip
@@ -67,6 +69,14 @@ JSAny? _encode(Object? value, String path) {
       return v.toJS;
     case final ByteBuffer v:
       return v.toJS;
+    case final WebSharedBuffer v:
+      return v.jsBuffer; // Structured clone shares (not copies) the memory.
+    case final SharedBuffer v:
+      throw ArgumentError(
+        'The ${v.runtimeType} at $path is not backed by a real '
+        'SharedArrayBuffer and cannot cross a real worker boundary. '
+        'FakeSharedBuffer is for in-process transports only.',
+      );
     case final List<Object?> v:
       final encoded = <JSAny?>[
         for (var i = 0; i < v.length; i++) _encode(v[i], '$path[$i]'),
@@ -155,6 +165,9 @@ Object? _decode(JSAny? value, String path) {
   }
   if (value.isA<JSArrayBuffer>()) {
     return (value as JSArrayBuffer).toDart;
+  }
+  if (value.instanceOfString('SharedArrayBuffer')) {
+    return WebSharedBuffer.fromJs(value as JSObject);
   }
   if (value.isA<JSFunction>()) {
     throw ArgumentError('Functions cannot cross the worker boundary ($path).');

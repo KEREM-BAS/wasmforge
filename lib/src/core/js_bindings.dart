@@ -111,6 +111,23 @@ external bool webAssemblyValidate(JSUint8Array bytes);
 @JS()
 external JSAny? structuredClone(JSAny? value);
 
+/// Options literal for [structuredCloneWithTransfer].
+extension type StructuredCloneOptions._(JSObject _) implements JSObject {
+  /// Creates the object literal `{transfer: [...]}`.
+  external factory StructuredCloneOptions({
+    required JSArray<JSObject> transfer,
+  });
+}
+
+/// `structuredClone` with a transfer list: buffers named in [options] are
+/// **moved** into the clone, detaching the originals — the same semantics a
+/// transfer-enabled `postMessage` applies.
+@JS('structuredClone')
+external JSAny? structuredCloneWithTransfer(
+  JSAny? value,
+  StructuredCloneOptions options,
+);
+
 /// A plain JavaScript object used as a string-keyed record, with typed
 /// indexed access so no `dart:js_interop_unsafe` is needed.
 @JS('Object')

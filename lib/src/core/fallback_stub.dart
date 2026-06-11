@@ -6,6 +6,8 @@
 /// off-web callers get graceful degradation, not crashes.
 library;
 
+import '../concurrency/shared_buffer.dart';
+
 /// Not on the web.
 bool detectIsWeb() => false;
 
@@ -14,3 +16,9 @@ bool detectCrossOriginIsolated() => false;
 
 /// WasmGC support is a web concept; `false` everywhere else.
 bool detectWasmGcSupport() => false;
+
+/// Shared memory is unavailable off the web.
+bool platformSharedBufferSupported() => false;
+
+/// Shared memory is unavailable off the web — `null`, never a throw.
+SharedBuffer? tryAllocateSharedBuffer(int byteLength) => null;
