@@ -1,0 +1,21 @@
+name: wasmforge_example
+description: >-
+  wasmforge demo: 4K box blur on a WorkerPool with shared-memory vs
+  message-passing timings and a live fps meter.
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  wasmforge:
+    path: ../
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
