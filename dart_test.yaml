@@ -1,0 +1,3 @@
+# Defaults for `dart test`. Browser suites live under test/web and are tagged
+# via @TestOn('browser'); the VM run skips them automatically.
+timeout: 2x

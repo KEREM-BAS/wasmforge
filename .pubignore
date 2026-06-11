@@ -1,0 +1,13 @@
+# NOTE: a .pubignore replaces .gitignore for this directory when publishing,
+# so the build/cache excludes are repeated here.
+.dart_tool/
+build/
+doc/api/
+pubspec.lock
+coverage/
+*.log
+.DS_Store
+
+# Session/tooling local state — never publish.
+.claude/
+.gitattributes

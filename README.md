@@ -1,39 +1,37 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# wasmforge
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+WASM-native building blocks for Flutter Web: typed JS interop, capability
+detection, and off-main-thread compute via Web Workers + `SharedArrayBuffer`,
+with graceful fallbacks everywhere.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+> Status: v0.1 under construction. Sections below are filled in as the
+> corresponding modules land.
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+## Why
 
-## Features
+- Compiles under **dart2wasm** (no `dart:html` anywhere) and runs on the
+  skwasm renderer, while remaining compatible with CanvasKit/JS builds.
+- Pure Dart core (`package:web` + `dart:js_interop` only) — usable from any
+  Flutter Web app and unit-testable off-browser.
+- Every browser API sits behind an interface with shipped mocks
+  (`package:wasmforge/testing.dart`), so downstream code tests on the VM.
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+## Quickstart
 
-## Getting started
+_To be written (P4)._
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+## Running compute in a worker
 
-## Usage
+_To be written (P4): worker entrypoint, build step, `WorkerPool` usage._
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+## SharedArrayBuffer and cross-origin isolation
 
-```dart
-const like = 'sample';
-```
+_To be written (P4): COOP/COEP deployment guide._
 
-## Additional information
+## Testing your code that uses wasmforge
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+_To be written (P4)._
+
+## License
+
+MIT — see [LICENSE](LICENSE).
