@@ -5,5 +5,9 @@
 import 'package:wasmforge/wasmforge.dart';
 
 void main() {
-  print('wasmforge $wasmforgeVersion smoke entrypoint');
+  print('wasmforge $wasmforgeVersion');
+  print('isWeb=$isWeb');
+  print('isCrossOriginIsolated=$isCrossOriginIsolated');
+  print('supportsWasmGc=$supportsWasmGc');
+  print(detectCapabilityMatrix());
 }
