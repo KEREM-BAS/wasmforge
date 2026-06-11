@@ -25,6 +25,7 @@ export 'src/concurrency/message_protocol.dart'
         maxSafePayloadInteger,
         protocolVersion;
 export 'src/concurrency/shared_buffer.dart' show SharedBuffer;
+export 'src/concurrency/worker_pool.dart' show WorkerPool, WorkerPoolConfig;
 export 'src/core/capabilities.dart'
     show
         CapabilityMatrix,
@@ -32,6 +33,9 @@ export 'src/core/capabilities.dart'
         isCrossOriginIsolated,
         isWeb,
         supportsWasmGc;
+export 'src/core/fallback_stub.dart'
+    if (dart.library.js_interop) 'src/concurrency/wasm_worker.dart'
+    show runWorker;
 
 /// The version of the wasmforge package, kept in sync with `pubspec.yaml`.
 const String wasmforgeVersion = '0.1.0';

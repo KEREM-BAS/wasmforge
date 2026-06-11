@@ -13,4 +13,10 @@ void main() {
   assertEncodablePayload(<String, Object?>{'n': 1, 'ok': true});
   final registry = TaskRegistry()..register<int, int>('inc', (n) => n + 1);
   print('registry tasks: ${registry.taskNames.join(', ')}');
+  // Reference the pool and worker runtime so dart2wasm compiles them.
+  final pool = WorkerPool(
+    workerEntrypoint: Uri.parse('workers/smoke.wasm'),
+    size: 1,
+  );
+  print('pool size: ${pool.size}, runWorker: ${runWorker.runtimeType}');
 }

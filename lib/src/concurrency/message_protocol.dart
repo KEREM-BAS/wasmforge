@@ -326,7 +326,14 @@ void assertEncodablePayload(Object? payload) => _validate(payload, r'$');
 
 /// Largest integer magnitude that survives a JS `number` round trip
 /// (2^53 - 1). Mirrored by the web codec in `src/core/interop_casts.dart`.
+///
+/// The guard only fires on backends with true 64-bit integers (VM and
+/// dart2wasm); under dart2js, `int` already is a JS number, so out-of-range
+/// values lost their precision at creation and pass through unchanged.
 const int maxSafePayloadInteger = 9007199254740991;
+
+/// `true` on JS backends, where `int` and `double` are the same JS numbers.
+final bool _intsAreJsNumbers = identical(1.0, 1);
 
 void _validate(Object? value, String path) {
   switch (value) {
@@ -336,6 +343,13 @@ void _validate(Object? value, String path) {
     case String():
       return;
     case final int v:
+      // On dart2js, int IS a JS number: precision beyond 2^53 was already
+      // gone at value-creation time, so the guard would reject values that
+      // are perfectly fine on the wire. It protects true 64-bit ints
+      // (dart2wasm/VM) from silent precision loss.
+      if (_intsAreJsNumbers) {
+        return;
+      }
       if (v > maxSafePayloadInteger || v < -maxSafePayloadInteger) {
         throw ArgumentError(
           'Integer $v at $path exceeds ±2^53 - 1 and cannot cross the worker '

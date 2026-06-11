@@ -8,6 +8,8 @@ import 'dart:async';
 import 'dart:js_interop';
 import 'dart:typed_data';
 
+import 'package:web/web.dart' as web;
+
 import '../concurrency/message_protocol.dart';
 import '../concurrency/shared_buffer_web.dart';
 import '../core/capabilities.dart';
@@ -67,6 +69,107 @@ class FakeJsEnvironment {
 
   static JSObject _allocatePlainBuffer(int byteLength) =>
       Uint8List(byteLength).buffer.toJS;
+}
+
+/// A Dart-implemented `Worker` lookalike built with `@JSExport` +
+/// [createJSInteropWrapper], for testing `WebWorkerTransport` without
+/// spawning a real worker (inject it via `debugWorkerFactory` in
+/// `src/concurrency/wasm_worker.dart`).
+///
+/// The wrapper object returned by [asWorker] exposes `postMessage`,
+/// `terminate`, and assignable `onmessage`/`onerror` properties — the surface
+/// the transport touches. The Dart side records what the transport posted and
+/// can script incoming envelopes/events.
+final class MockWorker {
+  /// Messages the transport posted, in order.
+  final List<JSAny?> postedMessages = <JSAny?>[];
+
+  /// The transfer argument of each post (null when none), parallel to
+  /// [postedMessages].
+  final List<JSAny?> postedTransfers = <JSAny?>[];
+
+  /// Number of `terminate()` calls.
+  int terminateCount = 0;
+
+  JSFunction? _onmessage;
+  JSFunction? _onerror;
+
+  /// The JS `postMessage` member.
+  @JSExport('postMessage')
+  void postMessage(JSAny? message, [JSAny? transfer]) {
+    postedMessages.add(message);
+    postedTransfers.add(transfer);
+  }
+
+  /// The JS `terminate` member.
+  @JSExport('terminate')
+  void terminate() {
+    terminateCount += 1;
+  }
+
+  /// The JS `onmessage` property (set by the transport).
+  @JSExport('onmessage')
+  set onmessage(JSFunction? handler) => _onmessage = handler;
+
+  /// The JS `onmessage` property getter.
+  @JSExport('onmessage')
+  JSFunction? get onmessage => _onmessage;
+
+  /// The JS `onerror` property (set by the transport).
+  @JSExport('onerror')
+  set onerror(JSFunction? handler) => _onerror = handler;
+
+  /// The JS `onerror` property getter.
+  @JSExport('onerror')
+  JSFunction? get onerror => _onerror;
+
+  /// This mock as a `web.Worker` the transport can drive.
+  web.Worker asWorker() => createJSInteropWrapper(this) as web.Worker;
+
+  /// Delivers [wire] to the transport's `onmessage` handler as a
+  /// `MessageEvent`.
+  void emitEnvelope(WireEnvelope wire) {
+    final event = web.MessageEvent(
+      'message',
+      web.MessageEventInit(data: wire),
+    );
+    _onmessage?.callAsFunction(null, event);
+  }
+
+  /// Emits a `ready` envelope (protocol defaults to the current version).
+  void emitReady({int protocol = protocolVersion}) =>
+      emitEnvelope(WireEnvelope(kind: 'ready', protocol: protocol));
+
+  /// Emits a `result` envelope.
+  void emitResult(int id, JSAny? payload) =>
+      emitEnvelope(WireEnvelope(kind: 'result', id: id, payload: payload));
+
+  /// Emits an `error` envelope.
+  void emitError(
+    int id,
+    String message, {
+    String? stack,
+    String? errorType,
+  }) =>
+      emitEnvelope(
+        WireEnvelope(
+          kind: 'error',
+          id: id,
+          errorMessage: message,
+          errorStack: stack,
+          errorType: errorType,
+        ),
+      );
+
+  /// Emits a `boot-error` envelope.
+  void emitBootError(String message) =>
+      emitEnvelope(WireEnvelope(kind: 'boot-error', errorMessage: message));
+
+  /// Fires the worker-level `error` event on the transport.
+  void emitWorkerError(String message) {
+    final event = web.ErrorEvent('error', web.ErrorEventInit(message: message));
+    _onerror?.callAsFunction(null, event);
+  }
 }
 
 /// Creates a [WorkerTransport] that round-trips every payload through the

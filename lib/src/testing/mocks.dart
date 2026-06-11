@@ -91,7 +91,20 @@ final class FakeWorkerTransport implements WorkerTransport {
     this.taskLatency,
     bool clonePayloads = true,
   })  : registry = registry ?? TaskRegistry(),
-        _clonePayloads = clonePayloads;
+        _clonePayloads = clonePayloads {
+    _ready = _buildReady();
+    // Mirror the real web transport: tasks sent before readiness are
+    // buffered; if the spawn fails they are silently dropped (the pool
+    // requeues them elsewhere).
+    _ready.then<void>((_) {
+      _isReady = true;
+      final buffered = List.of(_bufferedJobs);
+      _bufferedJobs.clear();
+      buffered.forEach(_run);
+    }).catchError((Object _) {
+      _bufferedJobs.clear();
+    });
+  }
 
   /// The registry tasks are dispatched into.
   final TaskRegistry registry;
@@ -117,10 +130,12 @@ final class FakeWorkerTransport implements WorkerTransport {
   int terminateCount = 0;
 
   final List<String> _scriptedFailures = <String>[];
+  final List<_FakeJob> _bufferedJobs = <_FakeJob>[];
   final StreamController<Envelope> _messages = StreamController<Envelope>();
   bool _terminated = false;
+  bool _isReady = false;
 
-  late final Future<void> _ready = _buildReady();
+  late final Future<void> _ready;
 
   Future<void> _buildReady() async {
     if (readyDelay != null) {
@@ -165,35 +180,48 @@ final class FakeWorkerTransport implements WorkerTransport {
     }
     sentEnvelopes.add(envelope);
     sentTransferFlags.add(transferBuffers);
-    final id = envelope.id!;
-    final task = envelope.task!;
-    final payload = _clonePayloads
-        ? simulateStructuredClone(envelope.payload)
-        : envelope.payload;
-    final scriptedFailure =
-        _scriptedFailures.isEmpty ? null : _scriptedFailures.removeAt(0);
+    // Clone at send time (like a real postMessage would), even when the job
+    // is buffered awaiting readiness.
+    final job = _FakeJob(
+      id: envelope.id!,
+      task: envelope.task!,
+      payload: _clonePayloads
+          ? simulateStructuredClone(envelope.payload)
+          : envelope.payload,
+      scriptedFailure:
+          _scriptedFailures.isEmpty ? null : _scriptedFailures.removeAt(0),
+    );
+    if (!_isReady) {
+      _bufferedJobs.add(job);
+      return;
+    }
+    _run(job);
+  }
+
+  void _run(_FakeJob job) {
     scheduleMicrotask(() async {
       if (taskLatency != null) {
         await Future<void>.delayed(taskLatency!);
       }
       Envelope reply;
+      final scriptedFailure = job.scriptedFailure;
       if (scriptedFailure != null) {
         reply = Envelope.error(
-          id: id,
+          id: job.id,
           errorMessage: scriptedFailure,
           errorType: 'ScriptedFailure',
         );
       } else {
         try {
-          final result = await registry.dispatch(task, payload);
+          final result = await registry.dispatch(job.task, job.payload);
           assertEncodablePayload(result);
           reply = Envelope.result(
-            id: id,
+            id: job.id,
             payload: _clonePayloads ? simulateStructuredClone(result) : result,
           );
         } on Object catch (error, stackTrace) {
           reply = Envelope.error(
-            id: id,
+            id: job.id,
             errorMessage: error.toString(),
             errorStack: stackTrace.toString(),
             errorType: error.runtimeType.toString(),
@@ -213,9 +241,24 @@ final class FakeWorkerTransport implements WorkerTransport {
       return;
     }
     _terminated = true;
+    _bufferedJobs.clear();
     // Not awaited: close()'s future only completes once a listener has
     // received the done event, which never happens for a never-listened
     // stream.
     unawaited(_messages.close());
   }
+}
+
+final class _FakeJob {
+  _FakeJob({
+    required this.id,
+    required this.task,
+    required this.payload,
+    required this.scriptedFailure,
+  });
+
+  final int id;
+  final String task;
+  final Object? payload;
+  final String? scriptedFailure;
 }

@@ -23,6 +23,10 @@ import 'js_bindings.dart';
 /// (2^53 - 1).
 const int maxSafeWireInteger = 9007199254740991;
 
+/// `true` on JS backends, where `int` and `double` are the same JS numbers
+/// and the 2^53 integer guard is meaningless.
+final bool _intsAreJsNumbers = identical(1.0, 1);
+
 /// Encodes a supported Dart payload [value] into its JS wire form.
 ///
 /// Throws [ArgumentError] (naming the offending runtime type and path) for
@@ -38,6 +42,14 @@ JSAny? _encode(Object? value, String path) {
     case final bool v:
       return v.toJS;
     case final int v:
+      // On dart2js, int IS a JS number (±Infinity and 1e300 both satisfy
+      // `is int`): any precision beyond 2^53 was already gone when the value
+      // was created, so there is nothing to protect — pass through. The
+      // guard below protects true 64-bit ints (dart2wasm/VM) from silent
+      // precision loss on the wire.
+      if (_intsAreJsNumbers) {
+        return v.toJS;
+      }
       if (v > maxSafeWireInteger || v < -maxSafeWireInteger) {
         throw ArgumentError(
           'Integer $v at $path exceeds ±2^53 - 1 and cannot cross the worker '
